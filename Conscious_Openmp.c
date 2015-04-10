@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <windows.h>
+#include <omp.h>
 
 #ifndef GLOBAL
 #define GLOBAL "Global.h"
@@ -30,7 +31,7 @@ void Record(int [][COUNT_FUNC]);
 
 int main(int argc, char *argv[]){
 
-    int test[] = {-58,869,1477,-645,-331,955,955,-1328,1497};
+    int test[] = {1217,-183,1357,-1250,-345,193,-2,-1066,1285,-1127};
 
     srand(time(NULL));
     if (PLAY_MODE == 1)
@@ -39,7 +40,7 @@ int main(int argc, char *argv[]){
         GeneticAlgorithm();
 
 
-    fclose(fout);
+
     return 0;
 }
 
@@ -53,14 +54,17 @@ int PlayGame(int *Parameter){
     PrintBoard(gameBoard);
 
     while (1){
-        if (PLAY_MODE == 1)
-            Sleep(100);
         NextStep(nextBoard,gameBoard, Parameter, COUNT_STEP, MoveLeft, MoveRight, MoveUp, MoveDown);
         UpdateBoard(gameBoard,nextBoard);
         maxLevel = FinishGame(gameBoard);
         if ( maxLevel != 0){
             break;
         }
+        if (PLAY_MODE == 1)
+            if ( TotalScore > 1000)
+                Sleep(1000);
+            else
+                Sleep(100);
     }
 
     return maxLevel;
@@ -68,7 +72,7 @@ int PlayGame(int *Parameter){
 
 void GeneticAlgorithm(){
 
-    int maxIter = 1000;
+    int maxIter = 100;
     int i,j,k;
     int group[GROUP_SIZE][COUNT_FUNC];
     int oldParameter[COUNT_FUNC];
@@ -80,7 +84,7 @@ void GeneticAlgorithm(){
     /*初始族群*/
     InitGroup(group);
 
-    fout = fopen("parameter.txt", "a");
+
 
     for ( i = 0 ; i < maxIter ; i++){
         Eliminate(group);
@@ -91,17 +95,19 @@ void GeneticAlgorithm(){
         max = -1;
         min = 20;
         maxIndex = 0;
+        #pragma omp parallel for
         for ( j = 0 ; j < GROUP_SIZE ; j++){
             tmp= Evalue( group[j]);
 
-            if ( tmp >= 10){
+            if ( tmp > 10){
+                fout = fopen("parameter.txt", "a");
                 sprintf(output,"Parameter = ");
                 for ( k = 0 ; k < COUNT_FUNC ; k++){
-                    sprintf(output,"%s %d",output, group[j][k]);
+                    sprintf(output,"%s %5d",output, group[j][k]);
                 }
                 sprintf(output,"%s, Score = %lf\n",output,tmp);
                 fprintf(fout,"%s",output);
-                fflush(fout);
+                fclose(fout);
             }
 
             sum += tmp;
@@ -138,7 +144,7 @@ void Record(int group[][COUNT_FUNC]){
     for ( i = 0 ; i < GROUP_SIZE ; i++){
     	sprintf(output,"%sParameter %d :",output, i);
         for ( j = 0 ; j < COUNT_FUNC ; j++){
-            sprintf(output,"%s %d",output, group[i][j]);
+            sprintf(output,"%s %5d",output, group[i][j]);
         }
         sprintf(output,"%s , score = %d\n",output, PlayGame(group[i]) );
     }
@@ -169,8 +175,12 @@ void InitGroup(int group[][COUNT_FUNC]){
 
     for ( i = 0 ; i < GROUP_SIZE ; i++){
         for ( j = 0 ; j < COUNT_FUNC ; j++){
-            if (INPUT_MODE == 0)
-                group[i][j] = rand()%21 -10;
+            if (INPUT_MODE == 0){
+                if (EVALE_MODE == 0)
+                    group[i][j] = rand()%21 -10;
+                else
+                    group[i][j] = rand()%11;
+            }
             else
                 fscanf(fin,"%d",&group[i][j]);
         }
@@ -187,15 +197,14 @@ void Mutation(int group[][COUNT_FUNC]){
     int i,j;
     int tmp;
 
+    #pragma omp parallel for
     for ( i = 0 ; i < GROUP_SIZE ; i++){
         if ( (rand()%100 + 1) <= MUTATION_RATE ){
             for ( j = 0 ; j < COUNT_FUNC ; j++){
-                if (rand()%1 == 0){
-                    if ( EVALE_MODE == 0)
-                        group[i][j] = rand()%3100 - 1500 ;
-                    else
-                        group[i][j] = rand()%1500 - 1500 ;
-                }
+                if ( EVALE_MODE == 0)
+                    group[i][j] = rand()%3100 - 1500 ;
+                else
+                    group[i][j] = rand()%1500 ;
             }
         }
     }
@@ -232,6 +241,7 @@ void Crossover(int group[][COUNT_FUNC]){
     if ( countA != countB)
         printf("Partition Error\n");
 
+    #pragma omp parallel for
     for ( i = 0 ; i < GROUP_SIZE/2 ; i++){
         if ( (rand()%100 + 1) <= CROSSOVER_RATE ){
             crossoverPoint = rand()%(COUNT_FUNC-2) + 1;
@@ -267,6 +277,7 @@ void Eliminate( int group[][COUNT_FUNC]){
     //int offset[] = {1,2,4,8,16,32,64,128,256,512,1024,2048};
     int offset[] = {1,4,9,16,25,36,49,64,81,100,121};
     sum = 0;
+
     for (i = 0; i < GROUP_SIZE ; i++){
         tmp = (int)(Evalue(group[i]));
         tmp = offset[tmp];
@@ -308,11 +319,12 @@ void Eliminate( int group[][COUNT_FUNC]){
 /*計算每組基因的分數*/
 double Evalue(int *Parameter){
 
-    double round = 10;
+    double round = ROUND;
     double score = 0;
     int i;
 
-    for (i = 0 ; i < round ; i++){
+    #pragma omp parallel for
+    for (i = 0 ; i < ROUND ; i++){
         score += PlayGame(Parameter);
     }
 

@@ -3,7 +3,7 @@
 #include<string.h>
 
 #ifndef GLOBAL
-#define GLOBAL "global.h"
+#define GLOBAL "Global.h"
 #include GLOBAL
 #endif
 
@@ -17,13 +17,14 @@ int MergeLevelUp(Board);
 int EmptyCount(Board);
 int LongestSequance(Board);
 int MinEdge(Board);
+int BorderSum(Board);
+int Repeat(Board);
 
 /*int main(){
 
     int i,j;
-    Board gameBoard= {{1,0,3,0},{0,3,0,5},{3,0,5,0},{0,5,0,7}};
-    int weightArray[] = {1,1,1,1,1,1,1,1};
-    int score;
+    Board gameBoard= {{1,3,5,0},{0,3,4,6},{3,0,5,0},{0,5,6,6}};
+    int weightArray[] = {1,1,1,1,1,1,1,1,1,1};
 
     for (i = 0 ; i < BOARD_HEIGHT ; i++){
         for (j = 0 ; j < BOARD_WIDTH ; j++){
@@ -32,15 +33,13 @@ int MinEdge(Board);
         putchar('\n');
     }
 
-    score = Frame_CalculateScore(gameBoard, weightArray);
-
-    printf("score = %d\n",score);
+    Frame_CalculateScore(gameBoard, weightArray);
     return 0;
-}*/
-
+}
+*/
 int Frame_CalculateScore(Board gameBoard, int* weightArray){
 
-    return CalculateScore(gameBoard, weightArray,COUNT_FUNC, MaxLevel, Average, MergeCount, MergeDis,MergeLevelUp, EmptyCount,LongestSequance, MinEdge);
+    return CalculateScore(gameBoard, weightArray,COUNT_FUNC, MaxLevel, Average, MergeCount, MergeDis,MergeLevelUp, EmptyCount,LongestSequance, MinEdge,BorderSum, Repeat);
 }
 
 int CalculateScore(Board gameBoard, int* weightArray,int count_func, ...){
@@ -52,7 +51,7 @@ int CalculateScore(Board gameBoard, int* weightArray,int count_func, ...){
     va_start(funcList, count_func);
 
     for (i = 0 ; i < count_func ; i++){
-        score += weightArray[i]*va_arg(funcList,ScoreFuncPtr)(gameBoard);
+        score += sign[EVALE_MODE][i]*weightArray[i]*va_arg(funcList,ScoreFuncPtr)(gameBoard);
     }
 
     va_end(funcList);
@@ -60,6 +59,7 @@ int CalculateScore(Board gameBoard, int* weightArray,int count_func, ...){
     return score;
 }
 
+/*最大等級*/
 int MaxLevel(Board gameBoard){
 
     int i,j;
@@ -76,6 +76,7 @@ int MaxLevel(Board gameBoard){
     return maxLevel;
 }
 
+/*每個block的平均值*/
 int Average(Board gameBoard){
 
     int i,j;
@@ -95,6 +96,7 @@ int Average(Board gameBoard){
     return avr;
 }
 
+/*可以互相融合的block數*/
 int MergeCount(Board gameBoard){
 
     int i,j;
@@ -122,9 +124,8 @@ int MergeCount(Board gameBoard){
     if (DEBUG_MODE == 1) printf("There are %d chance to level up\n",count_merge);
     return count_merge;
 }
-/*
-    相鄰2個block的level差距和
-*/
+
+/*相鄰2個block的level差距和*/
 int MergeDis(Board gameBoard){
 
     int i,j;
@@ -157,6 +158,7 @@ int MergeDis(Board gameBoard){
     return dis_merge;
 }
 
+/*空格數*/
 int EmptyCount(Board gameBoard){
 
     int i,j;
@@ -173,63 +175,65 @@ int EmptyCount(Board gameBoard){
     return count_empty;
 }
 
+/*最長的遞減數列level總和*/
 int LongestSequance(Board gameBoard){
 
-    int longestSeq = 0 ,tmp_longest;
     int i,j,lv;
     int m,n;
     int level;
     int size[12];
     int position[12][16];
-    Board sequance;
+    int max = 0;
+    int valid,sum;
 
     memset(size,0,sizeof(size));
 
     for ( i = 0; i < BOARD_HEIGHT ; i++){
         for ( j = 0 ; j < BOARD_WIDTH ; j++){
             level = gameBoard[i][j];
-            if ( level == 0)
-                sequance[i][j] = 0;
-            else
-                sequance[i][j] = 1;
-
-            if ( level > 1)
-                position[level][ size[level]++ ] = i * BOARD_HEIGHT + j;
+            if (level > max)
+                max = level;
+            position[level][ size[level]++ ] = i * BOARD_HEIGHT + j;
         }
     }
 
-    for ( lv = 2; lv <= 11 ; lv++){
+    sum = max;
+    for ( lv = max; lv >= 1 ; lv--){
+
+        valid = 0;
         for (j = 0 ; j < size[lv] ; j++){
 
             m = position[lv][j] / BOARD_HEIGHT;
             n = position[lv][j] % BOARD_HEIGHT;
 
-            tmp_longest = 0;
-            if ( m > 0 && gameBoard[m-1][n] == lv-1)
-                if ( sequance[m-1][n] > tmp_longest)
-                    tmp_longest = sequance[m-1][n];
-            if ( m < BOARD_HEIGHT - 1 && gameBoard[m+1][n] == lv-1)
-                if ( sequance[m+1][n] > tmp_longest)
-                    tmp_longest = sequance[m+1][n];
-            if ( n > 0 && gameBoard[m][n-1] == lv-1)
-                if ( sequance[m][n-1] > tmp_longest)
-                    tmp_longest = sequance[m][n-1];
-            if ( n < BOARD_WIDTH - 1 && gameBoard[m][n+1] == lv-1)
-                if ( sequance[m][n+1] > tmp_longest)
-                    tmp_longest = sequance[m][n+1];
-            sequance[m][n] = tmp_longest+1;
-            if (tmp_longest+1 > longestSeq)
-                longestSeq = tmp_longest+1;
+            if ( m > 0 && gameBoard[m-1][n] == lv-1){
+                valid = 1;
+                break;
+            }
+            if ( m < BOARD_HEIGHT - 1 && gameBoard[m+1][n] == lv-1){
+                valid = 1;
+                break;
+            }
+            if ( n > 0 && gameBoard[m][n-1] == lv-1){
+                valid = 1;
+                break;
+            }
+            if ( n < BOARD_WIDTH - 1 && gameBoard[m][n+1] == lv-1){
+                valid = 1;
+                break;
+            }
         }
+        if (valid == 0)
+            break;
+        else
+            sum += (lv-1);
     }
 
-    if (DEBUG_MODE == 1) printf("Longest Sequance = %d\n",longestSeq);
-    return longestSeq;
+    if (DEBUG_MODE == 1) printf("Longest Sequance = %d\n",sum);
+    return sum;
 }
 
-/*
-    計算相鄰的block是否level相差1
-*/
+/*計算相鄰的block是否level相差1*/
 int MergeLevelUp(Board gameBoard){
 
     int i,j;
@@ -258,10 +262,7 @@ int MergeLevelUp(Board gameBoard){
 }
 
 
-/*
-    邊緣的數字越小越好
-    平均值
-*/
+/*邊緣的數字越小越好 (平均值)*/
 int MinEdge(Board gameBoard){
 
     int i,j;
@@ -300,3 +301,52 @@ int MinEdge(Board gameBoard){
     return edgeSum;
 }
 
+/*在board外圍的數字和*/
+int BorderSum(Board gameBoard){
+
+    int i,j;
+    int sum = 0;
+    int count = 0;
+
+    for ( i = 0 ; i < BOARD_HEIGHT ; i++){
+        for ( j = 0 ; j < BOARD_WIDTH ; j++){
+            if ( i == 0 || i == (BOARD_HEIGHT - 1) || j == 0 || j == (BOARD_WIDTH - 1) ) {
+                if (gameBoard[i][j] > 0){
+                    if ( i == j || abs( i - j) == BOARD_HEIGHT)
+                        sum += 2*gameBoard[i][j];
+                    else
+                        sum += gameBoard[i][j];
+                    count += 1;
+                }
+            }
+        }
+    }
+    if (count > 0)
+        sum = sum*1.0/count+0.5;
+
+    if (DEBUG_MODE == 1) printf("BorderAvg = %d\n",sum);
+    return sum;
+}
+
+/*計算重複出現的數字總和*/
+int Repeat(Board gameBoard){
+
+    int i,j;
+    int count[12];
+    int sum = 0;
+
+    memset(count,0,sizeof(count));
+
+    for (i = 0 ; i < BOARD_HEIGHT; i++){
+        for (j = 0 ; j < BOARD_WIDTH ; j++){
+            count[gameBoard[i][j]] += 1;
+        }
+    }
+
+    for ( i = 1 ; i <= 11; i++){
+        if (count[i] > 1)
+            sum += (count[i]-1)*i;
+    }
+    if (DEBUG_MODE == 1) printf("Repeat Sum = %d\n",sum);
+    return sum;
+}

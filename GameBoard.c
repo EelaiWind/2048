@@ -1,15 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <conio.h>
-#include <windows.h>
 #include <time.h>
 #ifndef GLOBAL
-#define GLOBAL "global.h"
+#define GLOBAL "Global.h"
 #include GLOBAL
 #endif
-
-HANDLE  hConsole;
-int COLOR[15]={15,2,5,6,7,9,10,11,12,13,14,15,0,0,0};
 
 void InitGame(Board);
 int FinishGame(Board);
@@ -55,9 +50,7 @@ void InitGame(Board gameBoard){
 
     int i,j;
 
-    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    srand(time(NULL));
-
+    srand(rand());
     for ( i = 0 ; i < BOARD_HEIGHT ; i++){
         for ( j = 0 ; j< BOARD_WIDTH ; j++){
             gameBoard[i][j] = 0 ;
@@ -91,13 +84,13 @@ void InitGame(Board gameBoard){
 int FinishGame(Board gameBoard){
 
     int i,j;
-    int maxLevel = 0;
+    int max = 0;
     int full = 1, hasEmpty = 0;
 
     for ( i = 0 ; i < BOARD_HEIGHT ; i++){
         for ( j = 0 ; j < BOARD_WIDTH ; j++){
-            if (gameBoard[i][j] > maxLevel)
-                maxLevel = gameBoard[i][j];
+            if (gameBoard[i][j] > max)
+                max = gameBoard[i][j];
 
             if (gameBoard[i][j] == 0)
                 hasEmpty = 1;
@@ -118,14 +111,14 @@ int FinishGame(Board gameBoard){
         }
     }
 
-    if ( maxLevel == 11){
+    if ( max == 11){
         TotalScore += 1000000;
-        if (PLAY_MODE == 1) printf("You Win !\n");
-        return 1;
+        if (PLAY_MODE == 1) printf("You Win!(%d) \n", max);
+        return max;
     }
     else if ( hasEmpty == 0 && full == 1){
-        if (PLAY_MODE == 1) printf("You lose!!\n");
-        return 1;
+        if (PLAY_MODE == 1) printf("You lose!! (%d)\n", max);
+        return max;
     }
     else
         return 0;
@@ -176,10 +169,8 @@ void PrintBoard(Board gameBoard){
 
     if (PLAY_MODE == 0)
         return;
-    Sleep(100);
     //system("pause");
     system("cls");
-    SetConsoleTextAttribute(hConsole,COLOR[0]);
     printf("Total score = %d\n",TotalScore);
     printf("+--+--+--+--+\n");
     for ( i = 0 ; i < BOARD_HEIGHT ; i ++){
@@ -188,9 +179,7 @@ void PrintBoard(Board gameBoard){
             if ( gameBoard[i][j] == 0)
                 printf("  ");
             else{
-                SetConsoleTextAttribute(hConsole,COLOR[gameBoard[i][j]]);
                 printf("%2d",gameBoard[i][j]);
-                SetConsoleTextAttribute(hConsole,COLOR[0]);
             }
         }
         putchar('|');
@@ -410,8 +399,6 @@ void MoveBlock(Board board, int x1, int y1, int x2, int y2){
     else if ( board[x2][y2] == board[x1][y1]){
         /*Union two block and increase the level by one*/
         board[x2][y2] = board[x1][y1] + 1;
-        if (board[x2][y2] > maxLevel)
-            maxLevel = board[x2][y2];
         board[x1][y1] = 0;
     }
 
